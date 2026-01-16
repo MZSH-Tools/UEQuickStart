@@ -53,10 +53,6 @@ class MainWindow:
         self.StatusLabel = ttk.Label(StatusFrame, text="就绪", foreground="blue")
         self.StatusLabel.pack(side=tk.LEFT)
 
-        # 进度条
-        self.Progress = ttk.Progressbar(InfoFrame, mode='indeterminate')
-        self.Progress.pack(fill=tk.X, pady=(10, 0))
-
         # 日志区域
         LogFrame = ttk.LabelFrame(self.Root, text="编译日志", padding=10)
         LogFrame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -101,7 +97,6 @@ class MainWindow:
     def _StartBuild(self):
         """开始编译"""
         self.StatusLabel.config(text="编译中...", foreground="orange")
-        self.Progress.start(10)
         self._Log("开始编译项目...")
 
         self.BuildMgr.StartBuild(
@@ -115,7 +110,6 @@ class MainWindow:
 
     def _OnBuildSuccess(self):
         """编译成功，自动打开项目并关闭"""
-        self.Progress.stop()
         self.StatusLabel.config(text="编译成功!", foreground="green")
         self._Log("=" * 50)
         self._Log("编译成功完成!")
@@ -137,7 +131,6 @@ class MainWindow:
 
     def _OnBuildError(self, ErrorMsg: str):
         """编译失败，保持显示等待用户关闭"""
-        self.Progress.stop()
         self.StatusLabel.config(text="编译失败", foreground="red")
         self._Log(f"错误: {ErrorMsg}")
         self._Log("=" * 50)
