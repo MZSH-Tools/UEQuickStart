@@ -3,6 +3,7 @@
 
 import json
 import os
+import re
 import winreg
 from pathlib import Path
 from dataclasses import dataclass
@@ -28,6 +29,24 @@ def ReadProjectFile(UProjectPath: Path) -> dict:
     """读取 .uproject 文件内容"""
     with open(UProjectPath, 'r', encoding='utf-8') as F:
         return json.load(F)
+
+
+def IsGUID(Value: str) -> bool:
+    """判断字符串是否为 GUID 格式（源码编译的引擎使用 GUID 标识）"""
+    GuidPattern = r"^\{?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\}?$"
+    return bool(re.match(GuidPattern, Value))
+
+
+def GetEnginePathFromBuilds(Guid: str) -> str:
+    """从注册表 Builds 获取源码编译引擎路径（GUID 关联）"""
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"SOFTWARE\Epic Games\Unreal Engine\Builds") as Key:
+            Value, _ = winreg.QueryValueEx(Key, Guid)
+            if Value and Path(Value).exists():
+                return Value
+    except WindowsError:
+        pass
+    return ""
 
 
 def GetEnginePathFromRegistry(Version: str) -> str:
@@ -71,19 +90,6 @@ def GetEnginePathFromLauncher(Version: str) -> str:
     return ""
 
 
-def GetEnginePathFromDefault(Version: str) -> str:
-    """尝试默认安装路径"""
-    DefaultPaths = [
-        f"C:/Program Files/Epic Games/UE_{Version}",
-        f"D:/Program Files/Epic Games/UE_{Version}",
-        f"E:/Program Files/Epic Games/UE_{Version}",
-    ]
-    for PathStr in DefaultPaths:
-        if Path(PathStr).exists():
-            return PathStr
-    return ""
-
-
 def LoadProjectInfo(ScriptDir: Path) -> ProjectData:
     """加载项目信息"""
     Result = ProjectData()
@@ -109,12 +115,16 @@ def LoadProjectInfo(ScriptDir: Path) -> ProjectData:
         Result.ErrorMsg = "未找到引擎版本信息"
         return Result
 
-    # 获取引擎路径（优先级：注册表 > Launcher > 默认路径）
-    Result.EnginePath = (
-        GetEnginePathFromRegistry(Result.EngineVersion) or
-        GetEnginePathFromLauncher(Result.EngineVersion) or
-        GetEnginePathFromDefault(Result.EngineVersion)
-    )
+    # 获取引擎路径
+    if IsGUID(Result.EngineVersion):
+        # GUID 格式：源码编译的引擎，从 Builds 注册表获取
+        Result.EnginePath = GetEnginePathFromBuilds(Result.EngineVersion)
+    else:
+        # 版本号格式：优先级 注册表 > Launcher
+        Result.EnginePath = (
+            GetEnginePathFromRegistry(Result.EngineVersion) or
+            GetEnginePathFromLauncher(Result.EngineVersion)
+        )
 
     if not Result.EnginePath:
         Result.ErrorMsg = f"无法找到 Unreal Engine {Result.EngineVersion} 的安装路径"

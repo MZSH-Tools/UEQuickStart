@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from Source.Data.ProjectInfo import ProjectData, LoadProjectInfo
+from Source.Data.Config import AppConfig, LoadConfig
 from Source.Logic.BuildMgr import BuildMgr
 
 
@@ -17,16 +18,18 @@ class MainWindow:
         self.ScriptDir = ScriptDir
         self.ProjectData: ProjectData = None
         self.BuildMgr = BuildMgr()
+        self.Config: AppConfig = LoadConfig(ScriptDir)
 
         self.Root = tk.Tk()
         self.Root.title("UE Build Tool")
         self.Root.geometry("600x450")
         self.Root.resizable(True, True)
 
-        self._SetupUI()
-        self.Root.after(100, self._LoadProjectInfo)
+        self.SetupUI()
+        self.Root.protocol("WM_DELETE_WINDOW", self.OnClose)
+        self.Root.after(100, self.LoadProject)
 
-    def _SetupUI(self):
+    def SetupUI(self):
         """创建界面"""
         # 信息区域
         InfoFrame = ttk.LabelFrame(self.Root, text="项目信息", padding=10)
@@ -66,7 +69,7 @@ class MainWindow:
         )
         self.LogText.pack(fill=tk.BOTH, expand=True)
 
-    def _Log(self, Msg: str):
+    def Log(self, Msg: str):
         """添加日志"""
         Timestamp = datetime.now().strftime("%H:%M:%S")
         self.LogText.config(state=tk.NORMAL)
@@ -74,68 +77,84 @@ class MainWindow:
         self.LogText.see(tk.END)
         self.LogText.config(state=tk.DISABLED)
 
-    def _LoadProjectInfo(self):
+    def LoadProject(self):
         """加载项目信息"""
-        self._Log("正在检测项目信息...")
+        self.Log("正在检测项目信息...")
 
         self.ProjectData = LoadProjectInfo(self.ScriptDir)
 
         if self.ProjectData.ErrorMsg:
-            self._Log(f"错误: {self.ProjectData.ErrorMsg}")
+            self.Log(f"错误: {self.ProjectData.ErrorMsg}")
             self.StatusLabel.config(text="错误", foreground="red")
             return
 
         self.ProjectLabel.config(text=self.ProjectData.Name, foreground="black")
         self.EngineLabel.config(text=f"Unreal Engine {self.ProjectData.EngineVersion}", foreground="black")
-        self._Log(f"找到项目: {self.ProjectData.Name}")
-        self._Log(f"引擎版本: {self.ProjectData.EngineVersion}")
-        self._Log(f"引擎路径: {self.ProjectData.EnginePath}")
+        self.Log(f"找到项目: {self.ProjectData.Name}")
+        self.Log(f"引擎版本: {self.ProjectData.EngineVersion}")
+        self.Log(f"引擎路径: {self.ProjectData.EnginePath}")
 
         # 自动开始编译
-        self.Root.after(500, self._StartBuild)
+        self.Root.after(500, self.StartBuild)
 
-    def _StartBuild(self):
+    def StartBuild(self):
         """开始编译"""
         self.StatusLabel.config(text="编译中...", foreground="orange")
-        self._Log("开始编译项目...")
+        self.Log("开始编译项目...")
 
         self.BuildMgr.StartBuild(
             ProjectName=self.ProjectData.Name,
             ProjectPath=self.ProjectData.Path,
             EnginePath=self.ProjectData.EnginePath,
-            OnLog=lambda Msg: self.Root.after(0, lambda: self._Log(Msg)),
-            OnSuccess=lambda: self.Root.after(0, self._OnBuildSuccess),
-            OnError=lambda Msg: self.Root.after(0, lambda: self._OnBuildError(Msg))
+            OnLog=lambda Msg: self.Root.after(0, lambda: self.Log(Msg)),
+            OnSuccess=lambda: self.Root.after(0, self.OnBuildSuccess),
+            OnError=lambda Msg: self.Root.after(0, lambda: self.OnBuildError(Msg)),
+            Platform=self.Config.Build.Platform,
+            Configuration=self.Config.Build.Configuration,
+            AdditionalArgs=self.Config.Build.AdditionalArgs
         )
 
-    def _OnBuildSuccess(self):
+    def OnBuildSuccess(self):
         """编译成功，自动打开项目并关闭"""
         self.StatusLabel.config(text="编译成功!", foreground="green")
-        self._Log("=" * 50)
-        self._Log("编译成功完成!")
-        self._Log("=" * 50)
+        self.Log("=" * 50)
+        self.Log("编译成功完成!")
+        self.Log("=" * 50)
+
+        if not self.Config.AutoOpenProject:
+            self.Log("编译完成，请手动打开项目")
+            return
 
         # 自动打开项目
-        self._Log(f"正在打开项目: {self.ProjectData.Path}")
+        self.Log(f"正在打开项目: {self.ProjectData.Path}")
         Success, ErrorMsg = self.BuildMgr.OpenProject(
             self.ProjectData.Path,
             self.ProjectData.EnginePath
         )
 
         if Success:
-            self._Log("编辑器启动中，即将关闭...")
-            self.Root.after(1500, self.Root.quit)
+            if self.Config.AutoCloseOnSuccess:
+                self.Log("编辑器启动中，即将关闭...")
+                self.Root.after(self.Config.CloseDelayMs, self.Root.quit)
+            else:
+                self.Log("编辑器已启动")
         else:
-            self._Log(f"错误: {ErrorMsg}")
+            self.Log(f"错误: {ErrorMsg}")
             self.StatusLabel.config(text="打开失败", foreground="red")
 
-    def _OnBuildError(self, ErrorMsg: str):
+    def OnBuildError(self, ErrorMsg: str):
         """编译失败，保持显示等待用户关闭"""
         self.StatusLabel.config(text="编译失败", foreground="red")
-        self._Log(f"错误: {ErrorMsg}")
-        self._Log("=" * 50)
-        self._Log("编译失败，请检查日志后手动关闭窗口")
-        self._Log("=" * 50)
+        self.Log(f"错误: {ErrorMsg}")
+        self.Log("=" * 50)
+        self.Log("编译失败，请检查日志后手动关闭窗口")
+        self.Log("=" * 50)
+
+    def OnClose(self):
+        """窗口关闭时清理资源"""
+        if self.BuildMgr.IsBuilding:
+            self.BuildMgr.StopBuild()
+        self.Root.destroy()
 
     def Run(self):
         """运行应用"""

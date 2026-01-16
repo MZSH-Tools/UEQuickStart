@@ -22,7 +22,10 @@ class BuildMgr:
         EnginePath: str,
         OnLog: Callable[[str], None],
         OnSuccess: Callable[[], None],
-        OnError: Callable[[str], None]
+        OnError: Callable[[str], None],
+        Platform: str = "Win64",
+        Configuration: str = "Development",
+        AdditionalArgs: list[str] = None
     ):
         """开始编译（异步）"""
         if self.IsBuilding:
@@ -32,20 +35,37 @@ class BuildMgr:
         self.BuildSuccess = False
 
         Thread = threading.Thread(
-            target=self._RunBuild,
-            args=(ProjectName, ProjectPath, EnginePath, OnLog, OnSuccess, OnError),
+            target=self.RunBuild,
+            args=(ProjectName, ProjectPath, EnginePath, OnLog, OnSuccess, OnError,
+                  Platform, Configuration, AdditionalArgs or []),
             daemon=True
         )
         Thread.start()
 
-    def _RunBuild(
+    def StopBuild(self):
+        """停止编译进程"""
+        if self.Process and self.Process.poll() is None:
+            try:
+                self.Process.terminate()
+                self.Process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self.Process.kill()
+            except Exception:
+                pass
+        self.IsBuilding = False
+        self.Process = None
+
+    def RunBuild(
         self,
         ProjectName: str,
         ProjectPath: Path,
         EnginePath: str,
         OnLog: Callable[[str], None],
         OnSuccess: Callable[[], None],
-        OnError: Callable[[str], None]
+        OnError: Callable[[str], None],
+        Platform: str,
+        Configuration: str,
+        AdditionalArgs: list[str]
     ):
         """执行编译（后台线程）"""
         BuildBat = Path(EnginePath) / "Engine/Build/BatchFiles/Build.bat"
@@ -59,12 +79,12 @@ class BuildMgr:
         Cmd = [
             str(BuildBat),
             f"{ProjectName}Editor",
-            "Win64",
-            "Development",
+            Platform,
+            Configuration,
             f"-Project={ProjectPath}",
             "-WaitMutex",
             "-FromMsBuild"
-        ]
+        ] + AdditionalArgs
 
         OnLog(f"执行命令: {' '.join(Cmd)}")
 
