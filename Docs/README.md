@@ -11,18 +11,43 @@
 
 1. 将工具放置到 UE 项目根目录（与 `.uproject` 同级）
 2. 双击运行 `UEBuildTool.exe`（或 `python Main.py`）
-3. 点击「开始编译」
-4. 等待编译完成，点击「打开项目」
+3. 自动编译并打开项目
 
 ## 配置说明
 
-本工具无需配置，自动检测：
+### 自动检测项
 
 | 项目 | 来源 |
 |------|------|
 | 项目名称 | `.uproject` 文件名 |
 | 引擎版本 | `.uproject` 中的 `EngineAssociation` |
 | 引擎路径 | Windows 注册表 / Epic Games Launcher 配置 |
+
+### 可选配置文件
+
+在项目根目录创建 `UEBuildConfig.json` 可自定义编译行为：
+
+```json
+{
+  "Build": {
+    "Platform": "Win64",
+    "Configuration": "Development",
+    "AdditionalArgs": []
+  },
+  "AutoOpenProject": true,
+  "AutoCloseOnSuccess": true,
+  "CloseDelayMs": 1500
+}
+```
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| Build.Platform | Win64 | 目标平台 |
+| Build.Configuration | Development | 编译配置（Development/Shipping 等） |
+| Build.AdditionalArgs | [] | 额外编译参数 |
+| AutoOpenProject | true | 编译成功后自动打开项目 |
+| AutoCloseOnSuccess | true | 打开项目后自动关闭工具 |
+| CloseDelayMs | 1500 | 关闭延迟（毫秒） |
 
 ## 打包成 EXE
 
@@ -74,6 +99,12 @@ dist/UEBuildTool.exe
 **支持**。工具会自动检测编辑器：
 - UE5: `UnrealEditor.exe`
 - UE4: `UE4Editor.exe`
+
+---
+
+### Q: 支持源码编译的引擎吗？
+
+**支持**。工具会自动识别 `.uproject` 中的 GUID 格式引擎版本，并从注册表获取对应的引擎路径。
 
 ---
 
