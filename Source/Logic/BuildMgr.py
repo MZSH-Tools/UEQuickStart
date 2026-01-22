@@ -118,20 +118,3 @@ class BuildMgr:
         except Exception as E:
             self.IsBuilding = False
             OnError(f"编译异常: {E}")
-
-    def OpenProject(self, ProjectPath: Path, EnginePath: str) -> tuple[bool, str]:
-        """打开项目，返回 (成功, 错误信息)"""
-        EditorExe = Path(EnginePath) / "Engine/Binaries/Win64/UnrealEditor.exe"
-
-        # 兼容 UE4
-        if not EditorExe.exists():
-            EditorExe = Path(EnginePath) / "Engine/Binaries/Win64/UE4Editor.exe"
-
-        if not EditorExe.exists():
-            return False, f"找不到编辑器: {EditorExe}"
-
-        try:
-            subprocess.Popen([str(EditorExe), str(ProjectPath)], shell=True)
-            return True, ""
-        except Exception as E:
-            return False, f"无法启动编辑器: {E}"

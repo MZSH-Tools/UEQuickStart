@@ -21,7 +21,7 @@ class MainWindow:
         self.Config: AppConfig = LoadConfig(ScriptDir)
 
         self.Root = tk.Tk()
-        self.Root.title("UE Build Tool")
+        self.Root.title("UE Quick Build")
         self.Root.geometry("600x450")
         self.Root.resizable(True, True)
 
@@ -115,32 +115,11 @@ class MainWindow:
         )
 
     def OnBuildSuccess(self):
-        """编译成功，自动打开项目并关闭"""
+        """编译成功"""
         self.StatusLabel.config(text="编译成功!", foreground="green")
         self.Log("=" * 50)
         self.Log("编译成功完成!")
         self.Log("=" * 50)
-
-        if not self.Config.AutoOpenProject:
-            self.Log("编译完成，请手动打开项目")
-            return
-
-        # 自动打开项目
-        self.Log(f"正在打开项目: {self.ProjectData.Path}")
-        Success, ErrorMsg = self.BuildMgr.OpenProject(
-            self.ProjectData.Path,
-            self.ProjectData.EnginePath
-        )
-
-        if Success:
-            if self.Config.AutoCloseOnSuccess:
-                self.Log("编辑器启动中，即将关闭...")
-                self.Root.after(self.Config.CloseDelayMs, self.Root.quit)
-            else:
-                self.Log("编辑器已启动")
-        else:
-            self.Log(f"错误: {ErrorMsg}")
-            self.StatusLabel.config(text="打开失败", foreground="red")
 
     def OnBuildError(self, ErrorMsg: str):
         """编译失败，保持显示等待用户关闭"""

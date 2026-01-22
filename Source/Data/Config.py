@@ -7,7 +7,7 @@ from dataclasses import dataclass, field, asdict
 from typing import Optional
 
 # 默认配置文件名
-CONFIG_FILE_NAME = "UEBuildConfig.json"
+CONFIG_FILE_NAME = "UEQuickBuild.json"
 
 
 @dataclass
@@ -22,9 +22,6 @@ class BuildConfig:
 class AppConfig:
     """应用配置"""
     Build: BuildConfig = field(default_factory=BuildConfig)
-    AutoOpenProject: bool = True
-    AutoCloseOnSuccess: bool = True
-    CloseDelayMs: int = 1500
 
 
 def LoadConfig(ConfigDir: Path) -> AppConfig:
@@ -44,12 +41,7 @@ def LoadConfig(ConfigDir: Path) -> AppConfig:
             AdditionalArgs=BuildData.get("AdditionalArgs", [])
         )
 
-        return AppConfig(
-            Build=Build,
-            AutoOpenProject=Data.get("AutoOpenProject", True),
-            AutoCloseOnSuccess=Data.get("AutoCloseOnSuccess", True),
-            CloseDelayMs=Data.get("CloseDelayMs", 1500)
-        )
+        return AppConfig(Build=Build)
     except Exception:
         return AppConfig()
 
