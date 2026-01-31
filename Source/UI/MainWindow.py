@@ -84,6 +84,12 @@ class MainWindow:
         self.LogText.see(tk.END)
         self.LogText.config(state=tk.DISABLED)
 
+    def ClearLog(self):
+        """清空日志"""
+        self.LogText.config(state=tk.NORMAL)
+        self.LogText.delete(1.0, tk.END)
+        self.LogText.config(state=tk.DISABLED)
+
     def LoadProject(self):
         """加载项目信息"""
         self.Log("正在检测项目信息...")
@@ -106,6 +112,7 @@ class MainWindow:
 
     def StartBuild(self):
         """开始编译"""
+        self.ClearLog()
         self.StatusLabel.config(text="编译中...", foreground="orange")
         self.RebuildBtn.config(state=tk.DISABLED)
         self.Log("开始编译项目...")
