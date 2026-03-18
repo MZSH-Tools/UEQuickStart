@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """编译管理器 - 业务逻辑层"""
 
+import os
+import stat
 import subprocess
 import threading
 from pathlib import Path
@@ -55,6 +57,47 @@ class BuildMgr:
         self.IsBuilding = False
         self.Process = None
 
+    def FixLineEndings(self, ProjectDir: Path, OnLog: Callable[[str], None]):
+        """修复项目源码文件的换行符为 CRLF"""
+        # 扫描目录：Source/、ThirdParty/、Plugins/ 下递归查找所有 Source/ 和 ThirdParty/
+        ScanDirs = [ProjectDir / "Source", ProjectDir / "ThirdParty"]
+        PluginsDir = ProjectDir / "Plugins"
+        if PluginsDir.exists():
+            for DirName in ("Source", "ThirdParty"):
+                for SubDir in PluginsDir.rglob(DirName):
+                    if SubDir.is_dir():
+                        ScanDirs.append(SubDir)
+
+        FixedFiles = []
+        for ScanDir in ScanDirs:
+            if not ScanDir.exists():
+                continue
+            for Ext in ("*.h", "*.c", "*.cpp", "*.cs", "*.inl"):
+                for FilePath in ScanDir.rglob(Ext):
+                    try:
+                        RawData = FilePath.read_bytes()
+                        # 先统一为 \n，再转为 \r\n
+                        FixedData = RawData.replace(b"\r\n", b"\n").replace(b"\r", b"\n").replace(b"\n", b"\r\n")
+                        if FixedData == RawData:
+                            continue
+
+                        # 检查是否只读，需要临时去除只读属性
+                        WasReadOnly = not os.access(FilePath, os.W_OK)
+                        if WasReadOnly:
+                            os.chmod(FilePath, stat.S_IWRITE | stat.S_IREAD)
+
+                        FilePath.write_bytes(FixedData)
+
+                        if WasReadOnly:
+                            os.chmod(FilePath, stat.S_IREAD)
+
+                        FixedFiles.append(str(FilePath))
+                        OnLog(f"  已修复换行符: {FilePath}")
+                    except Exception as E:
+                        OnLog(f"  换行符修复失败: {FilePath} ({E})")
+
+        OnLog(f"换行符修复完成，共修复 {len(FixedFiles)} 个文件")
+
     def RunBuild(
         self,
         ProjectName: str,
@@ -74,6 +117,9 @@ class BuildMgr:
             self.IsBuilding = False
             OnError(f"找不到 Build.bat: {BuildBat}")
             return
+
+        # 修复源码文件换行符
+        self.FixLineEndings(ProjectPath.parent, OnLog)
 
         # 构建编译命令
         Cmd = [
