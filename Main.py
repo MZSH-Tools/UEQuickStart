@@ -67,11 +67,12 @@ def _DispatchCli() -> int:
 
     Parser = argparse.ArgumentParser(prog="UEQuickStart", description="UE 项目一键编译工具")
     Parser.add_argument("--test", action="store_true", help="测试模式：只编译不打开编辑器")
-    Parser.parse_args()
+    Parser.add_argument("--engine", default="", metavar="VERSION", help="指定本次编译使用的引擎版本（如 5.8），不修改工程关联")
+    Args = Parser.parse_args()
 
     # CLI 模式使用当前工作目录定位项目（区别于 GUI 模式使用脚本/exe 所在目录）
     WorkDir = Path.cwd()
-    ProjectData = LoadProjectInfo(WorkDir)
+    ProjectData = LoadProjectInfo(WorkDir, EngineOverride=Args.engine)
     if ProjectData.ErrorMsg:
         print(f"错误: {ProjectData.ErrorMsg}")
         return 1

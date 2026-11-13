@@ -90,7 +90,7 @@ def GetEnginePathFromLauncher(Version: str) -> str:
     return ""
 
 
-def LoadProjectInfo(ScriptDir: Path) -> ProjectData:
+def LoadProjectInfo(ScriptDir: Path, EngineOverride: str = "") -> ProjectData:
     """加载项目信息"""
     Result = ProjectData()
 
@@ -106,7 +106,7 @@ def LoadProjectInfo(ScriptDir: Path) -> ProjectData:
     # 读取引擎版本
     try:
         ProjectJson = ReadProjectFile(UProjectPath)
-        Result.EngineVersion = ProjectJson.get("EngineAssociation", "")
+        Result.EngineVersion = EngineOverride or ProjectJson.get("EngineAssociation", "")
     except Exception as E:
         Result.ErrorMsg = f"无法读取 .uproject 文件: {E}"
         return Result

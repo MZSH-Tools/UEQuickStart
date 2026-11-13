@@ -12,6 +12,17 @@
 
 ## 配置说明
 
+### 后台编译与引擎选择
+
+在 `.uproject` 所在目录执行：
+
+```powershell
+.\UEQuickStart.exe --test
+.\UEQuickStart.exe --test --engine 5.8
+```
+
+`--test` 只编译，不打开编辑器。默认使用工程的 `EngineAssociation`；`--engine 5.8` 仅为本次编译选择已安装的 UE5.8，不改写 `.uproject`。引擎路径仍从注册表或 Launcher 配置查找；找不到指定版本时返回失败，不回退到工程关联的版本。指定其他已安装版本时使用相同参数。
+
 ### 自动检测项
 
 | 项目 | 来源 |
